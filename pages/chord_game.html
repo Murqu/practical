@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Chord Quiz</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        #dynamicText {
+            font-size: 2em;
+            margin: 20px 20px;
+        }
+        #noteInputs {
+            margin: 20px 0;
+        }
+        input {
+            padding: 10px;
+            margin: 5px;
+            font-size: 1em;
+            text-align: center;
+            width: 50px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        .score {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dynamic Chord Quiz</h1>
+    <div>
+        <button id="startButton">Generate Chord</button>
+    </div>
+    <div id="dynamicText">Press "Generate Chord" to start!</div>
+    <div id="noteInputs"></div>
+    <div>
+        <button id="submitButton">Submit</button>
+    </div>
+    <div class="score">
+        <p>Score: <span id="score">0</span></p>
+    </div>
+    <script src="../jscriptt/chord_game.js"></script>
+</body>
+</html>
