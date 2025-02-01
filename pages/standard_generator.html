@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jazz Standard Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        button {
+            font-size: 16px;
+            padding: 10px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Jazz Standard Generator</h1>
+    <h2 id="tune">Press the button to generate a tune</h2>
+    <button onclick="generateTune()">Generate</button>
+
+    <script>
+        function generateTune() {
+            fetch('../jazz_tunes.json')
+                .then(response => response.json())
+                .then(data => {
+                    const tunes = data;
+                    const randomTune = tunes[Math.floor(Math.random() * tunes.length)];
+                    document.getElementById('tune').textContent = randomTune;
+                })
+                .catch(error => console.error('Error loading JSON:', error));
+        }
+    </script>
+</body>
+</html>
