@@ -3,13 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Button Links</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        a.button {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 30px;
+            text-decoration: none;
+            color: white;
+            background-color: #007BFF;
+            border-radius: 8px;
+            transition: background-color 0.3s, transform 0.2s;
+            font-size: 18px;
+        }
+
+        a.button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 <body>
-    <a href="pages/chord_game.html">game</a>
-    <a href="pages/standard_generator.html">standard_generator</a>
-    <a href="pages/pitch_recognition.html">pitch_recognition</a>
-
-
+    <a href="pages/chord_game.html" class="button">Game</a>
+    <a href="pages/standard_generator.html" class="button">Standard Generator</a>
+    <a href="pages/pitch_recognition.html" class="button">Pitch Recognition</a>
 </body>
 </html>
