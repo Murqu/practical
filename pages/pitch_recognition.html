@@ -57,7 +57,7 @@ button:hover {transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.25);
 <div style="margin-bottom:20px;">
 <label style="font-weight:600; margin-right:10px;">Sound Set:</label>
 <select id="soundSetSelect">
-<option value="default">Default</option>
+<option value="default">Default (Synth)</option>
 <option value="piano">Piano</option>
 <option value="organ">Organ</option>
 </select>
@@ -91,6 +91,12 @@ const pitchMap = {
 const enharmonics = {'C#':['C#','DB'],'DB':['C#','DB'],'D#':['D#','EB'],'EB':['D#','EB'],'F#':['F#','GB'],'GB':['F#','GB'],'G#':['G#','AB'],'AB':['G#','AB'],'A#':['A#','BB'],'BB':['A#','BB']};
 const noteNames = ['C','C#','Db','D','D#','Eb','E','F','F#','Gb','G','G#','Ab','A','A#','Bb','B'];
 
+// Frequencies for Web Audio API (C3–B3)
+const freqMap = {
+'C3':130.81,'C#3':138.59,'Db3':138.59,'D3':146.83,'D#3':155.56,'Eb3':155.56,'E3':164.81,'F3':174.61,
+'F#3':185.00,'Gb3':185.00,'G3':196.00,'G#3':207.65,'Ab3':207.65,'A3':220.00,'A#3':233.08,'Bb3':233.08,'B3':246.94
+};
+
 // --- Milestones ---
 const milestones = Array.from({length:50},(_,i)=>({
 points: i*20,
@@ -101,60 +107,71 @@ color:`hsl(${i*7.2},70%,60%)`
 // --- Game State ---
 let currentPitch='', lastPitch='', pitchCount=0, score=0, potentialPoints=10, replayCount=0, streak=0, streakMultiplier=1, lastMilestoneIndex=-1;
 
-// --- Play pitch from audio file ---
+// --- Play pitch ---
 function playPitch(pitchName){
-  const set=document.getElementById('soundSetSelect').value||'default';
-  const audio=new Audio(`sounds/${set}/${pitchName}.mp3`);
-  audio.play();
+    const set = document.getElementById('soundSetSelect').value;
+    if(set === 'default'){
+        const freq = freqMap[pitchName];
+        if(!freq) return;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type='sine';
+        oscillator.frequency.value = freq;
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        gainNode.gain.setValueAtTime(0.2,audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime+1);
+    } else {
+        const audio = new Audio(`sounds/${set}/${pitchName}.mp3`);
+        audio.play();
+    }
 }
 
 // --- Next pitch ---
 function nextPitch(){
-  const pitches=Object.keys(pitchMap); let selected;
-  do { selected=pitches[Math.floor(Math.random()*pitches.length)]; } while(selected===lastPitch);
-  currentPitch=selected; lastPitch=currentPitch;
-  playPitch(currentPitch);
-  pitchCount++; potentialPoints=10; replayCount=0;
-  document.getElementById('currentPitchDisplay').textContent=`Pitch ${pitchCount}`;
-  document.getElementById('pitchGuess').value=''; document.getElementById('result').textContent='';
-  updateProgressBar();
+    const pitches=Object.keys(pitchMap); let selected;
+    do { selected=pitches[Math.floor(Math.random()*pitches.length)]; } while(selected===lastPitch);
+    currentPitch=selected; lastPitch=currentPitch;
+    playPitch(currentPitch);
+    pitchCount++; potentialPoints=10; replayCount=0;
+    document.getElementById('currentPitchDisplay').textContent=`Pitch ${pitchCount}`;
+    document.getElementById('pitchGuess').value=''; document.getElementById('result').textContent='';
+    updateProgressBar();
 }
 
 // --- Progress bar & milestones ---
 function updateProgressBar(){
-  const progressEl=document.getElementById('progressBar'); 
-  const milestoneEl=document.getElementById('milestoneTitle');
-  let currentMilestone=milestones[0], nextMilestone=milestones[milestones.length-1], currentIndex=0;
-  for(let i=0;i<milestones.length;i++){
-    if(score>=milestones[i].points){ currentMilestone=milestones[i]; currentIndex=i; nextMilestone=milestones[i+1]||milestones[i]; }
-  }
-  const start=currentMilestone.points, end=nextMilestone.points;
-  let percent=end===start?100:((score-start)/(end-start))*100; percent=Math.min(Math.max(percent,0),100);
-  progressEl.style.width=percent+'%';
-  progressEl.style.background=`linear-gradient(90deg, ${currentMilestone.color}, #fff)`;
-  milestoneEl.textContent=`Milestone: ${currentMilestone.title}`;
-  if(currentIndex!==lastMilestoneIndex && currentIndex>0){ celebrateMilestone(); lastMilestoneIndex=currentIndex; }
+    const progressEl=document.getElementById('progressBar'); 
+    const milestoneEl=document.getElementById('milestoneTitle');
+    let currentMilestone=milestones[0], nextMilestone=milestones[milestones.length-1], currentIndex=0;
+    for(let i=0;i<milestones.length;i++){
+        if(score>=milestones[i].points){ currentMilestone=milestones[i]; currentIndex=i; nextMilestone=milestones[i+1]||milestones[i]; }
+    }
+    const start=currentMilestone.points, end=nextMilestone.points;
+    let percent=end===start?100:((score-start)/(end-start))*100; percent=Math.min(Math.max(percent,0),100);
+    progressEl.style.width=percent+'%';
+    progressEl.style.background=`linear-gradient(90deg, ${currentMilestone.color}, #fff)`;
+    milestoneEl.textContent=`Milestone: ${currentMilestone.title}`;
+    if(currentIndex!==lastMilestoneIndex && currentIndex>0){ celebrateMilestone(); lastMilestoneIndex=currentIndex; }
 }
 
 // --- Celebrate milestone ---
 function celebrateMilestone(){ 
-  const progressEl=document.getElementById('progressBar'); 
-  const container=document.querySelector('.container'); 
-  const milestoneEl=document.getElementById('milestoneTitle');
-  progressEl.classList.add("celebrate"); 
-  const milestoneIndex=lastMilestoneIndex; 
-  const color=milestones[milestoneIndex]?.color||"#ffbf00";
-  progressEl.style.background=`linear-gradient(90deg, ${color}, #fff)`;
-  container.style.boxShadow=`0 0 60px 20px ${color}AA, 0 15px 40px rgba(0,0,0,0.15)`;
-  container.style.transition='box-shadow 0.5s ease-in-out';
-  milestoneEl.style.animation='milestoneBounce 0.8s ease-in-out';
-  setTimeout(()=>milestoneEl.style.animation='',800);
-  setTimeout(()=>{progressEl.classList.remove("celebrate"); progressEl.style.background="linear-gradient(90deg, #6c63ff, #ff6584)"; container.style.boxShadow='0 15px 40px rgba(0,0,0,0.15)';},1200);
-  launchConfettiBurst(color); sparkleProgressBar(color);
+    const progressEl=document.getElementById('progressBar'); 
+    const container=document.querySelector('.container'); 
+    const milestoneEl=document.getElementById('milestoneTitle');
+    progressEl.classList.add("celebrate"); 
+    const milestoneIndex=lastMilestoneIndex; 
+    const color=milestones[milestoneIndex]?.color||"#ffbf00";
+    progressEl.style.background=`linear-gradient(90deg, ${color}, #fff)`;
+    container.style.boxShadow=`0 0 60px 20px ${color}AA, 0 15px 40px rgba(0,0,0,0.15)`;
+    container.style.transition='box-shadow 0.5s ease-in-out';
+    milestoneEl.style.animation='milestoneBounce 0.8s ease-in-out';
+    setTimeout(()=>milestoneEl.style.animation='',800);
+    setTimeout(()=>{progressEl.classList.remove("celebrate"); progressEl.style.background="linear-gradient(90deg, #6c63ff, #ff6584)"; container.style.boxShadow='0 15px 40px rgba(0,0,0,0.15)';},1200);
 }
-
-function launchConfettiBurst(color="#ffbf00"){for(let i=0;i<100;i++){const c=document.createElement('div');c.style.position='fixed';c.style.width='10px';c.style.height='10px';c.style.backgroundColor=color;c.style.left=Math.random()*window.innerWidth+'px';c.style.top='-10px';c.style.opacity='0.8';c.style.zIndex='999';document.body.appendChild(c); const fall=()=>{ const t=parseFloat(c.style.top); if(t<window.innerHeight+10){c.style.top=t+Math.random()*8+2+'px'; c.style.left=parseFloat(c.style.left)+Math.random()*6-3+'px'; c.style.transform=`rotate(${Math.random()*360}deg)`; requestAnimationFrame(fall);} else c.remove(); }; requestAnimationFrame(fall); }}
-function sparkleProgressBar(color){const bar=document.getElementById('progressBar'); for(let i=0;i<10;i++){const s=document.createElement('div'); s.style.position='absolute'; s.style.width='6px'; s.style.height='6px'; s.style.backgroundColor=color; s.style.borderRadius='50%'; s.style.top=Math.random()*100+'%'; s.style.left=Math.random()*100+'%'; s.style.opacity='0.8'; s.style.zIndex='2'; bar.appendChild(s); setTimeout(()=>s.remove(),800); }}
 
 // --- Replay, skip, normalize input ---
 function replayPitch(){if(!currentPitch)return; playPitch(currentPitch); replayCount++; if(potentialPoints>1) potentialPoints--; }
@@ -163,19 +180,19 @@ function normalizeInput(input){return input.trim().replace('♯','#').replace('�
 
 // --- Submit guess ---
 function submitGuess(){
-  const userGuess=normalizeInput(document.getElementById('pitchGuess').value); if(!userGuess)return;
-  const resultEl=document.getElementById('result'); const streakEl=document.getElementById('streakDisplay'); const scoreEl=document.getElementById('scoreDisplay');
-  const basePitch=currentPitch.replace(/[0-9]/g,'').toUpperCase();
-  const validAnswers=enharmonics[basePitch]||[basePitch];
+    const userGuess=normalizeInput(document.getElementById('pitchGuess').value); if(!userGuess)return;
+    const resultEl=document.getElementById('result'); const streakEl=document.getElementById('streakDisplay'); const scoreEl=document.getElementById('scoreDisplay');
+    const basePitch=currentPitch.replace(/[0-9]/g,'').toUpperCase();
+    const validAnswers=enharmonics[basePitch]||[basePitch];
 
-  if(validAnswers.includes(userGuess)){
-    let earned=potentialPoints; 
-    if(replayCount<=1){ streak++; streakMultiplier*=1.1; earned=Math.round(earned*streakMultiplier); streakEl.classList.add("hotstreak"); } else resetStreak();
-    score+=earned; scoreEl.textContent=`Score: ${score}`; animateScore(scoreEl);
-    streakEl.textContent=`Hot Streak: ${streak}`; resultEl.textContent=`🎉 Correct! +${earned} points`; resultEl.style.color='green';
-  } else{ resultEl.textContent=`❌ Incorrect. The correct answer was ${validAnswers.join(" or ")}`; resultEl.style.color='red'; resetStreak(); }
+    if(validAnswers.includes(userGuess)){
+        let earned=potentialPoints; 
+        if(replayCount<=1){ streak++; streakMultiplier*=1.1; earned=Math.round(earned*streakMultiplier); streakEl.classList.add("hotstreak"); } else resetStreak();
+        score+=earned; scoreEl.textContent=`Score: ${score}`; animateScore(scoreEl);
+        streakEl.textContent=`Hot Streak: ${streak}`; resultEl.textContent=`🎉 Correct! +${earned} points`; resultEl.style.color='green';
+    } else{ resultEl.textContent=`❌ Incorrect. The correct answer was ${validAnswers.join(" or ")}`; resultEl.style.color='red'; resetStreak(); }
 
-  updateProgressBar(); setTimeout(nextPitch,1200);
+    updateProgressBar(); setTimeout(nextPitch,1200);
 }
 
 function resetStreak(){streak=0; streakMultiplier=1; const streakEl=document.getElementById('streakDisplay'); streakEl.textContent='Hot Streak: 0'; streakEl.classList.remove("hotstreak");}
