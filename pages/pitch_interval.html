@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Interval Trainer — Mobile Grid</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; }
+    body { margin: 0; padding: 12px; line-height: 1.4; color: #0b1220; background:#f9f9fb; }
+    h1 { margin: 0; font-size: 1rem; font-weight: 700; text-align:center; margin-bottom:12px; }
+    .card { border-radius: 14px; padding: 16px; background: white; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+    button { 
+      padding: 14px; border-radius: 10px; border: 1px solid #ccd2e0; background:white; font-weight: 600; font-size: 0.9rem;
+    }
+    button.big { font-size: 1rem; width:100%; margin-bottom:8px; }
+    button:hover { cursor: pointer; background:#f0f4ff; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top:12px; }
+    .note-display { margin-top: 12px; display: flex; justify-content: space-between; flex-wrap:wrap; gap:8px; font-size:0.9rem; }
+    .note-pill { padding: 6px 10px; border-radius: 8px; background: #eef3ff; border: 1px solid #d6e0ff; font-weight: 700; }
+    .result { font-weight: 700; margin-top: 12px; padding: 12px; border-radius: 8px; text-align:center; font-size:0.95rem; }
+    .correct { background: #e6fff2; color: #06472f; }
+    .wrong { background: #fff1f1; color: #6b0b0b; }
+    .status { margin-top: 12px; font-size: 0.8rem; color:#444; text-align:center; }
+    footer { margin-top: 16px; font-size: 0.75rem; color: #666; text-align:center; }
+    .selected { background:#d9e5ff; }
+  </style>
+</head>
+<body>
+  <h1>🎵 Interval Trainer</h1>
+  <section class="card">
+    <button id="playFirst" class="big">▶ Play First Note</button>
+    <button id="playSecond" class="big">▶ Play Second Note</button>
+
+    <div class="grid" id="intervalGrid"></div>
+
+    <button id="confirm" class="big">✅ Confirm</button>
+    <button id="next" class="big">🔄 New Pair</button>
+
+    <div class="note-display">
+      <div>First: <span id="firstName" class="note-pill">—</span></div>
+      <div>Second: <span id="secondName" class="note-pill">—</span></div>
+    </div>
+
+    <div class="status" id="status">Press "New Pair" to start.</div>
+    <div id="feedback" class="result" style="display:none"></div>
+    <footer>Tip: Difference = 2nd − 1st note (semitones).</footer>
+  </section>
+
+  <script>
+    const noteNames=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    function midiToFreq(m){return 440*Math.pow(2,(m-69)/12);} 
+    function midiToName(m){const o=Math.floor(m/12)-1;return noteNames[m%12]+o;}
+    const intervalNames={0:'Unison',1:'m2',2:'M2',3:'m3',4:'M3',5:'P4',6:'TT',7:'P5',8:'m6',9:'M6',10:'m7',11:'M7',12:'Oct'};
+
+    const playFirstBtn=document.getElementById('playFirst');
+    const playSecondBtn=document.getElementById('playSecond');
+    const nextBtn=document.getElementById('next');
+    const firstName=document.getElementById('firstName');
+    const secondName=document.getElementById('secondName');
+    const confirmBtn=document.getElementById('confirm');
+    const feedback=document.getElementById('feedback');
+    const status=document.getElementById('status');
+    const intervalGrid=document.getElementById('intervalGrid');
+
+    let audioCtx=null;function ensureAudio(){if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();}
+    function playOsc(freq,when=0,duration=1){ensureAudio();const osc=audioCtx.createOscillator();const gain=audioCtx.createGain();osc.type='sine';osc.frequency.value=freq;osc.connect(gain);gain.connect(audioCtx.destination);const now=audioCtx.currentTime+when;gain.gain.setValueAtTime(0.001,now);gain.gain.exponentialRampToValueAtTime(0.15,now+0.02);gain.gain.exponentialRampToValueAtTime(0.001,now+duration);osc.start(now);osc.stop(now+duration);} 
+
+    let firstMidi=null,secondMidi=null;let selectedInterval=null;
+
+    function buildGrid(){intervalGrid.innerHTML='';for(let i=0;i<=12;i++){const btn=document.createElement('button');btn.textContent=intervalNames[i];btn.onclick=()=>{document.querySelectorAll('#intervalGrid button').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');selectedInterval=i;};intervalGrid.appendChild(btn);} }
+
+    function randomPair(){const base=Math.floor(Math.random()*(72-48+1))+48;let interval=Math.floor(Math.random()*13);let second=base+interval;firstMidi=base;secondMidi=second;firstName.textContent='—';secondName.textContent='—';feedback.style.display='none';status.textContent='Pair ready — play and choose interval.';selectedInterval=null;document.querySelectorAll('#intervalGrid button').forEach(b=>b.classList.remove('selected'));}
+
+    function semitoneDifference(){return secondMidi-firstMidi;}
+
+    playFirstBtn.onclick=()=>{if(!firstMidi)return;playOsc(midiToFreq(firstMidi),0,1);};
+    playSecondBtn.onclick=()=>{if(!firstMidi)return;playOsc(midiToFreq(secondMidi),0,1);};
+    nextBtn.onclick=()=>randomPair();
+
+    confirmBtn.onclick=()=>{if(!firstMidi||selectedInterval===null)return;const real=semitoneDifference();feedback.style.display='block';if(real===selectedInterval){feedback.className='result correct';feedback.textContent='✅ Correct! Interval is '+intervalNames[real];}else{feedback.className='result wrong';feedback.textContent='❌ Wrong. Actual interval is '+intervalNames[real];}firstName.textContent=midiToName(firstMidi);secondName.textContent=midiToName(secondMidi);};
+
+    buildGrid();
+    randomPair();
+  </script>
+</body>
+</html>
